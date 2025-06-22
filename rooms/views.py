@@ -18,6 +18,9 @@ class RoomListCreateAPI(APIView):
 
     def get(self, request):
         query = request.query_params.get('search')
+        max_price = request.query_params.get('max_price')
+        room_type = request.query_params.get('room_type')
+
         rooms = Room.objects.all()
 
         if query:
@@ -26,6 +29,15 @@ class RoomListCreateAPI(APIView):
                 Q(description__icontains=query) |
                 Q(location__icontains=query)
             )
+
+        if max_price:
+            try:
+                rooms = rooms.filter(price__lte=float(max_price))
+            except ValueError:
+                pass  # Ignore invalid input
+
+        if room_type:
+            rooms = rooms.filter(room_type__iexact=room_type)
 
         rooms = rooms.order_by('-created_at')
         serializer = RoomSerializer(rooms, many=True)

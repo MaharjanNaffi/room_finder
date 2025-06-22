@@ -6,16 +6,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = [
-            'id',
-            'title',
-            'description',
-            'price',
-            'location',
-            'contact_number',
-            'created_at',
-            'owner_email'
-        ]
+        fields = '__all__'
         read_only_fields = ['created_at', 'owner_email']
 
 class ReviewSerializer(serializers.ModelSerializer):
