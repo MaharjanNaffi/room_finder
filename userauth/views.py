@@ -1,4 +1,5 @@
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -6,9 +7,12 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from .serializers import RegisterSerializer, LoginSerializer, UserProfileSerializer
+from rooms.models import Review
+from rooms.serializers import ReviewSerializer
 
-# REGISTER API (BEGINNER-FRIENDLY)
 class RegisterAPI(APIView):
+    permission_classes = [AllowAny]  # ✅ Allow unauthenticated access
+
     def get(self, request):
         return Response({"message": "Send a POST request to register a new user."})
    
@@ -28,6 +32,7 @@ class RegisterAPI(APIView):
 
 # LOGIN API (BEGINNER-FRIENDLY)
 class LoginAPI(APIView):
+    permission_classes = [AllowAny] 
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
@@ -48,3 +53,15 @@ class UserProfileAPI(APIView):
     def get(self, request):
         serializer = UserProfileSerializer(request.user)
         return Response(serializer.data)
+    
+class MyReviewsAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        reviews = Review.objects.filter(user=request.user).select_related('room')
+        data = []
+        for review in reviews:
+            review_data = ReviewSerializer(review).data
+            review_data['room_title'] = review.room.title
+            data.append(review_data)
+        return Response(data)

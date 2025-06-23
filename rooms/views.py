@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAuthenticatedOrReadOnly
 from django.db.models import Q
-from .models import Room, Review
-from .serializers import RoomSerializer, ReviewSerializer
+from .models import Room, Review, Bookmark
+from .serializers import RoomSerializer, ReviewSerializer, BookmarkSerializer
 from .permissions import IsOwnerOrReadOnly
 
 class RoomListCreateAPI(APIView):
@@ -60,10 +60,15 @@ class ReviewCreateAPI(APIView):
         except Room.DoesNotExist:
             return Response({"error": "Room not found"}, status=404)
 
-        serializer = ReviewSerializer(data=request.data)
+        serializer = ReviewSerializer(
+            data=request.data,
+            context={'request': request, 'room': room}
+        )
+
         if serializer.is_valid():
             serializer.save(user=request.user, room=room)
             return Response(serializer.data, status=201)
+
         return Response(serializer.errors, status=400)
     
 # View to list all reviews for a room (Open to all)
@@ -94,7 +99,7 @@ class RoomDetailAPI(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
 class RoomRecommendationAPI(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request, room_id):
         try:
@@ -122,4 +127,50 @@ class RoomRecommendationAPI(APIView):
         serializer = RoomSerializer(similar_rooms, many=True)
         return Response(serializer.data)
 
+class BookmarkToggleAPI(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request, room_id):
+        try:
+            room = Room.objects.get(id=room_id)
+        except Room.DoesNotExist:
+            return Response({"error": "Room not found."}, status=404)
+
+        bookmark, created = Bookmark.objects.get_or_create(user=request.user, room=room)
+
+        if not created:
+            # Already bookmarked — remove it
+            bookmark.delete()
+            return Response({"message": "Bookmark removed."}, status=200)
+
+        return Response({"message": "Room bookmarked."}, status=201)
+
+
+class MyBookmarksAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        bookmarks = Bookmark.objects.filter(user=request.user).order_by('-created_at')
+        serializer = BookmarkSerializer(bookmarks, many=True)
+        return Response(serializer.data)
+
+class UserProfileAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Rooms reviewed by this user
+        reviewed_rooms = Room.objects.filter(reviews__user=user).distinct()
+
+        # Rooms bookmarked by this user
+        bookmarked_rooms = Room.objects.filter(bookmarked_by__user=user).distinct()
+
+        reviewed_serializer = RoomSerializer(reviewed_rooms, many=True)
+        bookmarked_serializer = RoomSerializer(bookmarked_rooms, many=True)
+
+        return Response({
+            "email": user.email,
+            "reviewed_rooms": reviewed_serializer.data,
+            "bookmarked_rooms": bookmarked_serializer.data
+        })

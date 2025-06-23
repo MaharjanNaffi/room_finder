@@ -51,7 +51,7 @@ function HomePage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <input
             type="text"
-            placeholder="Search by keyword or location"
+            placeholder="📍Search by keyword or location"
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -59,8 +59,8 @@ function HomePage() {
 
           <input
             type="number"
-            placeholder="Max Budget (Rs)"
-            min="1000"
+            placeholder="💰Max Budget (Rs)"
+            min="5000"
             step="100"
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
             value={budget}
@@ -73,11 +73,11 @@ function HomePage() {
             value={roomType}
             onChange={e => setRoomType(e.target.value)}
           >
-            <option value="">All Room Types</option>
-            <option value="Single">1BHK</option>
-            <option value="Shared">2BHK</option>
-            <option value="Flat">3BHK</option>
-            <option value="Hostel">4BHK</option>
+            <option value="">🏘️ All Room Types</option>
+            <option value="1BHK">1BHK</option>
+            <option value="2BHK">2BHK</option>
+            <option value="3BHK">3BHK</option>
+            <option value="4BHK">4BHK</option>
           </select>
         </div>
       </section>

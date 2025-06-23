@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+// const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
+
 const Header = () => (
   <header className="bg-white shadow-md py-4 mb-6">
     <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
