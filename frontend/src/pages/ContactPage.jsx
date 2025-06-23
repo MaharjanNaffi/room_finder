@@ -2,7 +2,7 @@
 import React from "react";
 import sresta from "../assets/sresta.jpg";
 import prastab from "../assets/prastab.jpg";
-import nafisha from "../assets/nafisha.png";
+import nafisha from "../assets/nafisha.jpg";
 
 const teamMembers = [
   {

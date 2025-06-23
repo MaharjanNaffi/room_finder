@@ -19,6 +19,12 @@ class Command(BaseCommand):
             "Kathmandu", "Lalitpur", "Bhaktapur", "Baneshwor", "Boudha", "Kalanki",
             "Chabahil", "Kirtipur", "Maharajgunj", "Jawalakhel"
         ]
+
+        DESCRIPTIONS = [
+    "Spacious and sunny room.", "Peaceful neighborhood.", "Furnished room with balcony.",
+    "Close to public transport.", "Ideal for students and working professionals.",
+    "Modern bathroom and kitchen.", "Affordable and comfortable living space."
+]
         room_type = ["1BHK", "2BHK", "3BHK", "4BHK"]
 
         Room.objects.all().delete()  # Optional: remove old rooms
@@ -26,7 +32,7 @@ class Command(BaseCommand):
         for i in range(500):
             Room.objects.create(
                 title=f"Room {i+1} - {random.choice(room_type)}",
-                description="Spacious and affordable room near public transport.",
+                description=random.choice(DESCRIPTIONS),
                 price=random.randint(5000, 30000),
                 location=random.choice(locations),
                 contact_number=f"+977-98{random.randint(10000000, 99999999)}",

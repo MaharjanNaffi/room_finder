@@ -10,6 +10,9 @@ from .models import Room, Review, Bookmark
 from .serializers import RoomSerializer, ReviewSerializer, BookmarkSerializer
 from .permissions import IsOwnerOrReadOnly
 
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
+
 class RoomListCreateAPI(APIView):
     def get_permissions(self):
         if self.request.method == 'POST':
@@ -23,18 +26,24 @@ class RoomListCreateAPI(APIView):
 
         rooms = Room.objects.all()
 
+        # 🔍 Apply fuzzy filtering if search query exists
         if query:
-            rooms = rooms.filter(
-                Q(title__icontains=query) |
-                Q(description__icontains=query) |
-                Q(location__icontains=query)
-            )
+            all_rooms = list(rooms)
+            matched_ids = []
+
+            for room in all_rooms:
+                combined_text = f"{room.title} {room.description} {room.location}"
+                score = fuzz.partial_ratio(query.lower(), combined_text.lower())
+                if score >= 60:  # You can adjust threshold
+                    matched_ids.append(room.id)
+
+            rooms = rooms.filter(id__in=matched_ids)
 
         if max_price:
             try:
                 rooms = rooms.filter(price__lte=float(max_price))
             except ValueError:
-                pass  # Ignore invalid input
+                pass
 
         if room_type:
             rooms = rooms.filter(room_type__iexact=room_type)
