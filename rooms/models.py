@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
 # rooms/models.py
 
@@ -19,6 +20,9 @@ class Room(models.Model):
     room_type = models.CharField(max_length=20, choices=ROOM_TYPES, default='2BHK')  # 🆕
     contact_number = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    latitude = models.FloatField()
+    longitude = models.FloatField()
 
     def __str__(self):
         return self.title

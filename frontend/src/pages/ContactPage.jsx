@@ -12,7 +12,7 @@ const teamMembers = [
   },
   {
     name: "Prastab Maharjan",
-    phone: "9800000003",
+    phone: "9869231440",
     image: prastab,
   },
   {

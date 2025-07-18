@@ -9,7 +9,6 @@ from django.db.models import Q
 from .models import Room, Review, Bookmark
 from .serializers import RoomSerializer, ReviewSerializer, BookmarkSerializer
 from .permissions import IsOwnerOrReadOnly
-
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
@@ -53,11 +52,33 @@ class RoomListCreateAPI(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = RoomSerializer(data=request.data)
+        data = request.data.copy()
+        location = data.get('location')
+
+        # Call Nominatim API to get lat, lon from location text
+        lat, lon = self.get_lat_lon_from_nominatim(location)
+        data['latitude'] = lat
+        data['longitude'] = lon
+
+        serializer = RoomSerializer(data=data)
         if serializer.is_valid():
             serializer.save(owner=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+def get_lat_lon_from_nominatim(self, location):
+        try:
+            url = f"https://nominatim.openstreetmap.org/search?q={location}&format=json"
+            headers = {'User-Agent': 'clean-room-finder-app'}
+            response = requests.get(url, headers=headers, timeout=5)
+            response.raise_for_status()
+            results = response.json()
+            if results:
+                return float(results[0]['lat']), float(results[0]['lon'])
+        except Exception as e:
+            print(f"Nominatim API error: {e}")
+        # Default to Kathmandu coords if failure
+        return 27.7172, 85.3240
 
 # View to post a review for a room (Login required)
 class ReviewCreateAPI(APIView):

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import RoomCard from '../components/RoomCard';
+import MapView from '../components/MapView';
 import '../index.css';
 
 <div className="flex justify-end gap-4 mb-6">
@@ -99,10 +100,10 @@ function HomePage() {
 
       {/* 🗺️ Map Placeholder */}
       <section className="mt-16 max-w-6xl mx-auto">
-        <h2 className="text-2xl font-bold mb-4 text-gray-700">Map View (Coming Soon)</h2>
-        <div className="h-64 bg-gradient-to-br from-purple-200 via-blue-100 to-pink-200 rounded-xl flex items-center justify-center text-gray-600">
-          Map integration placeholder
-        </div>
+      <h2 className="text-2xl font-bold mb-4 text-gray-700">Map View</h2>
+      <div className="rounded-xl overflow-hidden">
+      <MapView rooms={rooms} />
+      </div>
       </section>
     </div>
   );
