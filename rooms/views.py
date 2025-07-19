@@ -1,3 +1,4 @@
+import requests
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
@@ -11,6 +12,19 @@ from .serializers import RoomSerializer, ReviewSerializer, BookmarkSerializer
 from .permissions import IsOwnerOrReadOnly
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
+from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import send_mail
+from django.conf import settings
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate
+from userauth.serializers import RegisterSerializer, LoginSerializer
 
 class RoomListCreateAPI(APIView):
     def get_permissions(self):
@@ -204,3 +218,151 @@ class UserProfileAPI(APIView):
             "reviewed_rooms": reviewed_serializer.data,
             "bookmarked_rooms": bookmarked_serializer.data
         })
+
+User = get_user_model()
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_view(request):
+    serializer = RegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        token, created = Token.objects.get_or_create(user=user)
+        
+        # Send welcome email
+        try:
+            send_mail(
+                subject='Welcome to Room Finder!',
+                message=f'Hi {user.first_name},\n\nWelcome to Room Finder! Your account has been created successfully.\n\nBest regards,\nRoom Finder Team',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Email sending failed: {e}")
+        
+        return Response({
+            'message': 'User registered successfully',
+            'token': token.key,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'name': f"{user.first_name} {user.last_name}"
+            }
+        }, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    serializer = LoginSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.validated_data
+        token, created = Token.objects.get_or_create(user=user)
+        
+        return Response({
+            'access': token.key,  # Using token instead of JWT for simplicity
+            'refresh': token.key,  # You can implement JWT later if needed
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'name': f"{user.first_name} {user.last_name}"
+            }
+        })
+    
+    return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def forgot_password_view(request):
+    email = request.data.get('email')
+    
+    if not email:
+        return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = User.objects.get(email=email)
+        
+        # Generate password reset token
+        token = default_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        
+        # Create reset link (you'll need to handle this in your frontend)
+        reset_link = f"http://localhost:3000/reset-password/{uid}/{token}/"
+        
+        # Send password reset email
+        send_mail(
+            subject='Password Reset - Room Finder',
+            message=f'''Hi {user.first_name},
+
+You requested a password reset for your Room Finder account.
+
+Click the link below to reset your password:
+{reset_link}
+
+This link will expire in 1 hour.
+
+If you didn't request this, please ignore this email.
+
+Best regards,
+Room Finder Team''',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        
+        return Response({'message': 'Password reset email sent successfully'})
+        
+    except User.DoesNotExist:
+        # Don't reveal if email exists or not for security
+        return Response({'message': 'If an account with this email exists, a password reset link has been sent.'})
+    except Exception as e:
+        print(f"Email sending failed: {e}")
+        return Response({'error': 'Failed to send email. Please try again later.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password_view(request):
+    uid = request.data.get('uid')
+    token = request.data.get('token')
+    new_password = request.data.get('new_password')
+    
+    if not all([uid, token, new_password]):
+        return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Decode the user ID
+        user_id = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id)
+        
+        # Check if token is valid
+        if default_token_generator.check_token(user, token):
+            user.set_password(new_password)
+            user.save()
+            
+            # Send confirmation email
+            send_mail(
+                subject='Password Reset Successful - Room Finder',
+                message=f'''Hi {user.first_name},
+
+Your password has been successfully reset.
+
+If you didn't make this change, please contact us immediately.
+
+Best regards,
+Room Finder Team''',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+            
+            return Response({'message': 'Password reset successful'})
+        else:
+            return Response({'error': 'Invalid or expired token'}, status=status.HTTP_400_BAD_REQUEST)
+            
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return Response({'error': 'Invalid reset link'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        print(f"Password reset failed: {e}")
+        return Response({'error': 'Password reset failed. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

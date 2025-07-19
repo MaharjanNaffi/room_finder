@@ -5,19 +5,40 @@ from django.contrib.auth import authenticate
 
 User = get_user_model()
 
-# REGISTER
 class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
     class Meta:
         model = User
-        fields = ('name', 'email', 'password')
+        fields = ('first_name', 'last_name', 'email', 'password', 'confirm_password')
         extra_kwargs = {'password': {'write_only': True}}
 
+    def validate(self, data):
+        if data['password'] != data['confirm_password']:
+            raise serializers.ValidationError("Passwords don't match")
+        return data
+
     def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
-        Token.objects.create(user=user)  # create token on register
+        # Remove confirm_password from validated_data
+        validated_data.pop('confirm_password')
+        
+        # Create full name from first_name and last_name
+        first_name = validated_data.get('first_name', '')
+        last_name = validated_data.get('last_name', '')
+        full_name = f"{first_name} {last_name}".strip()
+        
+        # Create user with your custom User model
+        user = User.objects.create_user(
+            email=validated_data['email'],
+            password=validated_data['password'],
+            name=full_name,
+            first_name=first_name,
+            last_name=last_name,
+        )
+        Token.objects.create(user=user)
         return user
 
-# LOGIN
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
@@ -27,9 +48,8 @@ class LoginSerializer(serializers.Serializer):
         if user and user.is_active:
             return user
         raise serializers.ValidationError("Invalid credentials")
-    
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['email', 'name']  # include more fields if needed
+        fields = ['email', 'name', 'first_name', 'last_name']

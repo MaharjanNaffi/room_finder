@@ -19,6 +19,8 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=100)
+    first_name = models.CharField(max_length=30, blank=True)  # Add this
+    last_name = models.CharField(max_length=30, blank=True)   # Add this
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
@@ -26,6 +28,12 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['name']
+
+    def save(self, *args, **kwargs):
+        # Auto-generate name from first_name and last_name if not provided
+        if not self.name and (self.first_name or self.last_name):
+            self.name = f"{self.first_name} {self.last_name}".strip()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.email

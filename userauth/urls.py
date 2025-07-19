@@ -1,12 +1,11 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import RegisterAPI, LoginAPI, UserProfileAPI, MyReviewsAPI
+from . import views
 
 urlpatterns = [
-    path('register/', RegisterAPI.as_view(), name='register'),
-    path('login/', LoginAPI.as_view(), name='login'),
-    path('profile/', UserProfileAPI.as_view(), name='profile'),
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path("myreviews/", MyReviewsAPI.as_view()),
+    path('register/', views.RegisterAPI.as_view(), name='register'),
+    path('login/', views.LoginAPI.as_view(), name='login'),
+    path('profile/', views.UserProfileAPI.as_view(), name='profile'),
+    path('my-reviews/', views.MyReviewsAPI.as_view(), name='my_reviews'),
+    path('forgot-password/', views.ForgotPasswordAPI.as_view(), name='forgot_password'),
+    path('reset-password/', views.ResetPasswordAPI.as_view(), name='reset_password'),
 ]
