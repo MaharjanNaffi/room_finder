@@ -1,4 +1,5 @@
 import requests
+from math import radians, sin, cos, sqrt, atan2
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
@@ -25,6 +26,51 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from userauth.serializers import RegisterSerializer, LoginSerializer
+from rest_framework.pagination import PageNumberPagination
+
+class NearbyRoomsAPI(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, room_id):
+        try:
+            current_room = Room.objects.get(id=room_id)
+        except Room.DoesNotExist:
+            return Response({"error": "Room not found"}, status=404)
+
+        if not current_room.latitude or not current_room.longitude:
+            return Response([], status=200)
+
+        # Get radius from query params (default 1 km)
+        try:
+            radius = float(request.query_params.get('radius', 1))
+        except ValueError:
+            radius = 1
+
+        def haversine(lat1, lon1, lat2, lon2):
+            R = 6371  # Earth radius in km
+            d_lat = radians(lat2 - lat1)
+            d_lon = radians(lon2 - lon1)
+            a = sin(d_lat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(d_lon / 2) ** 2
+            c = 2 * atan2(sqrt(a), sqrt(1 - a))
+            return R * c
+
+        nearby_rooms = []
+        for room in Room.objects.exclude(id=room_id):
+            if room.latitude and room.longitude:
+                distance = haversine(current_room.latitude, current_room.longitude, room.latitude, room.longitude)
+                if distance <= radius:
+                    nearby_rooms.append(room)
+
+        serializer = RoomSerializer(nearby_rooms, many=True)
+        return Response(serializer.data, status=200)
+    
+class RoomListAllAPI(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        rooms = Room.objects.all().order_by('-created_at')
+        serializer = RoomSerializer(rooms, many=True)
+        return Response(serializer.data)
 
 class RoomListCreateAPI(APIView):
     def get_permissions(self):
@@ -62,8 +108,12 @@ class RoomListCreateAPI(APIView):
             rooms = rooms.filter(room_type__iexact=room_type)
 
         rooms = rooms.order_by('-created_at')
-        serializer = RoomSerializer(rooms, many=True)
-        return Response(serializer.data)
+        # ⚡ Apply pagination
+        paginator = PageNumberPagination()
+        paginator.page_size = 12  # or use settings PAGE_SIZE
+        result_page = paginator.paginate_queryset(rooms, request)
+        serializer = RoomSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
         data = request.data.copy()

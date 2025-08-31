@@ -1,42 +1,105 @@
+// src/pages/HomePage.jsx
 import React, { useEffect, useState } from 'react';
 import RoomCard from '../components/RoomCard';
 import MapView from '../components/MapView';
 import '../index.css';
-
-<div className="flex justify-end gap-4 mb-6">
-  <a href="/login" className="text-blue-600 font-semibold hover:underline">Login</a>
-  <a href="/register" className="text-purple-600 font-semibold hover:underline">Register</a>
-</div>
-
+import { useLocation, useNavigate } from 'react-router-dom';
 
 function HomePage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [rooms, setRooms] = useState([]);
+  const [allRooms, setAllRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [budget, setBudget] = useState('');
   const [roomType, setRoomType] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const roomsPerPage = 12;
+
+  // Read URL query params on load
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setSearch(params.get('search') || '');
+    setBudget(params.get('budget') || '');
+    setRoomType(params.get('roomType') || '');
+    setCurrentPage(parseInt(params.get('page')) || 1);
+  }, [location.search]);
 
   useEffect(() => {
-    let url = `http://127.0.0.1:8000/api/rooms/?search=${search}`;
+    const fetchRooms = async () => {
+      setLoading(true);
 
-    if (budget) {
-      url += `&max_price=${budget}`;
-    }
-    if (roomType) {
-      url += `&room_type=${roomType}`;
+      let url = `http://127.0.0.1:8000/api/rooms/?search=${search}&page=${currentPage}`;
+      if (budget) url += `&max_price=${budget}`;
+      if (roomType) url += `&room_type=${roomType}`;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        setRooms(data.results || data);
+        setTotalPages(Math.ceil((data.count || (data.length || 0)) / roomsPerPage));
+      } catch (err) {
+        console.error('Error fetching rooms:', err);
+      } finally {
+        setLoading(false);
+      }
+
+      try {
+        const responseAll = await fetch(`http://127.0.0.1:8000/api/rooms/rooms/all/`);
+        const dataAll = await responseAll.json();
+        setAllRooms(dataAll);
+      } catch (err) {
+        console.error('Error fetching all rooms for map:', err);
+      }
+    };
+
+    fetchRooms();
+
+    // Update URL query params
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (budget) params.set('budget', budget);
+    if (roomType) params.set('roomType', roomType);
+    params.set('page', currentPage);
+    navigate({ pathname: '/home', search: params.toString() }, { replace: true });
+  }, [search, budget, roomType, currentPage, navigate]);
+
+  useEffect(() => {
+    const handleScroll = () => setShowScrollTop(window.scrollY > 300);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  const getPagination = () => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+        range.push(i);
+      }
     }
 
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        setRooms(data);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching rooms:', error);
-        setLoading(false);
-      });
-  }, [search, budget, roomType]);
+    for (let i of range) {
+      if (l) {
+        if (i - l === 2) rangeWithDots.push(l + 1);
+        else if (i - l > 2) rangeWithDots.push('...');
+      }
+      rangeWithDots.push(i);
+      l = i;
+    }
+
+    return rangeWithDots;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 p-6">
@@ -57,7 +120,6 @@ function HomePage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-
           <input
             type="number"
             placeholder="💰Max Budget (Rs)"
@@ -67,8 +129,6 @@ function HomePage() {
             value={budget}
             onChange={e => setBudget(e.target.value)}
           />
-
-
           <select
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
             value={roomType}
@@ -88,23 +148,64 @@ function HomePage() {
         <p className="text-center text-gray-600">Loading rooms...</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {rooms.length > 0 ? (
-            rooms.map(room => (
-              <RoomCard key={room.id} room={room} />
-            ))
+          {Array.isArray(rooms) && rooms.length > 0 ? (
+            rooms.map(room => <RoomCard key={room.id} room={room} />)
           ) : (
             <p className="col-span-full text-center text-gray-500">No rooms found.</p>
           )}
         </div>
       )}
 
-      {/* 🗺️ Map Placeholder */}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8 gap-2 flex-wrap">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            className="px-3 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+          >
+            &lt;
+          </button>
+          {getPagination().map((page, idx) =>
+            page === '...' ? (
+              <span key={idx} className="px-3 py-1">...</span>
+            ) : (
+              <button
+                key={idx}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1 rounded ${
+                  page === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                }`}
+              >
+                {page}
+              </button>
+            )
+          )}
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            className="px-3 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+          >
+            &gt;
+          </button>
+        </div>
+      )}
+
+      {/* 🗺️ Map Section */}
       <section className="mt-16 max-w-6xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4 text-gray-700">Map View</h2>
-      <div className="rounded-xl overflow-hidden">
-      <MapView rooms={rooms} />
-      </div>
+        <h2 className="text-2xl font-bold mb-4 text-gray-700">Map View</h2>
+        <div className="rounded-xl overflow-hidden">
+          <MapView rooms={allRooms} />
+        </div>
       </section>
+
+      {/* Scroll-to-top */}
+      {showScrollTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition"
+        >
+          ⬆️
+        </button>
+      )}
     </div>
   );
 }

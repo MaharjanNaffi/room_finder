@@ -37,7 +37,7 @@ const ContactPage = () => {
         {teamMembers.map((member, index) => (
           <div
             key={index}
-            className="bg-white shadow-xl rounded-2xl p-6 text-center w-72"
+            className="bg-white shadow-xl rounded-2xl p-6 text-center w-72 flex flex-col items-center"
           >
             <img
               src={member.image}
@@ -45,7 +45,13 @@ const ContactPage = () => {
               className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-md"
             />
             <h2 className="text-xl font-semibold text-purple-700">{member.name}</h2>
-            <p className="text-gray-600 mt-2">📞 {member.phone}</p>
+            <p className="text-gray-600 mt-2 mb-4">📞 {member.phone}</p>
+            <a
+              href={`tel:${member.phone}`}
+              className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition text-sm"
+            >
+              Call
+            </a>
           </div>
         ))}
       </div>

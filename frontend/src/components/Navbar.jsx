@@ -1,13 +1,14 @@
+// src/components/Navbar.jsx
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // ⬅️ add useNavigate
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Menu, X } from "lucide-react";
-import { toast } from "react-toastify"; // ⬅️ for logout toast
+import { toast } from "react-toastify";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const navigate = useNavigate(); // ⬅️ Initialize navigate
+  const navigate = useNavigate();
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
   const closeMenu = () => setMenuOpen(false);
@@ -19,7 +20,12 @@ const Navbar = () => {
     logout();
     toast.info("👋 Logged out");
     closeMenu();
-    navigate("/home"); // ⬅️ Redirect after logout
+    navigate("/home");
+  };
+
+  const handleHomeClick = () => {
+    closeMenu();
+    navigate("/home", { replace: true }); // resets HomePage filters
   };
 
   const navLinkStyles =
@@ -28,9 +34,9 @@ const Navbar = () => {
   return (
     <nav className="bg-purple-700 shadow-md">
       <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-        <Link to="/" onClick={closeMenu} className="text-2xl font-bold text-white hover:opacity-90">
+        <button onClick={handleHomeClick} className="text-2xl font-bold text-white hover:opacity-90">
           Room Finder
-        </Link>
+        </button>
 
         <div className="md:hidden">
           <button onClick={toggleMenu} className="text-white">
@@ -39,11 +45,9 @@ const Navbar = () => {
         </div>
 
         <ul
-          className={`${
-            menuOpen ? "block" : "hidden"
-          } md:flex items-center space-y-4 md:space-y-0 md:space-x-6 absolute md:static top-16 left-0 w-full md:w-auto bg-purple-700 md:bg-transparent px-6 md:px-0 py-4 md:py-0 z-40 text-lg text-center md:text-left`}
+          className={`${menuOpen ? "block" : "hidden"} md:flex items-center space-y-4 md:space-y-0 md:space-x-6 absolute md:static top-16 left-0 w-full md:w-auto bg-purple-700 md:bg-transparent px-6 md:px-0 py-4 md:py-0 z-40 text-lg text-center md:text-left`}
         >
-          <li><Link to="/home" onClick={closeMenu} className={navLinkStyles}>Home</Link></li>
+          <li><button onClick={handleHomeClick} className={navLinkStyles}>Home</button></li>
           <li><Link to="/about" onClick={closeMenu} className={navLinkStyles}>About Us</Link></li>
           <li><Link to="/contact" onClick={closeMenu} className={navLinkStyles}>Contact</Link></li>
 

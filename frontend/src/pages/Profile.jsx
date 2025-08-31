@@ -95,7 +95,7 @@ const Profile = () => {
                       onClick={() => handleRemoveBookmark(room.id)}
                       className="text-red-500 text-sm hover:underline"
                     >
-                      💔 Remove from Bookmark
+                    Remove from Bookmark
                     </button>
                   </div>
                 </div>
