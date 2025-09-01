@@ -203,62 +203,104 @@ const RoomDetail = () => {
         </select>
       </div>
 
-      {/* Map */}
-      {room.latitude && room.longitude ? (
-        <div className="w-full h-64 rounded-xl overflow-hidden mb-6">
-          <MapContainer
-            key={room.id} 
-            center={[parseFloat(room.latitude), parseFloat(room.longitude)]}
-            zoom={14}
-            style={{ height: "100%", width: "100%" }}
+      {/* Map Wrapper with Legend */}
+{room.latitude && room.longitude ? (
+  <div className="relative w-full h-96 rounded-xl mb-6">
+    {/* Map Container */}
+    <MapContainer
+      key={room.id} 
+      center={[parseFloat(room.latitude), parseFloat(room.longitude)]}
+      zoom={14}
+      style={{ height: "100%", width: "100%" }}
+    >
+      <MapUpdater center={[parseFloat(room.latitude), parseFloat(room.longitude)]} />
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution="&copy; OpenStreetMap contributors"
+      />
+
+      {/* Current room marker */}
+      <Marker
+        position={[parseFloat(room.latitude), parseFloat(room.longitude)]}
+        icon={new L.Icon({
+          iconUrl: "https://maps.google.com/mapfiles/ms/icons/orange-dot.png",
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+          popupAnchor: [0, -32],
+        })}
+      >
+        <Popup>
+          <strong>{room.title}</strong><br />{room.location}
+        </Popup>
+      </Marker>
+
+      {/* Nearby rooms markers */}
+      {nearbyRooms.filter(r => r?.latitude && r?.longitude).map(r => {
+        let colorUrl = "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
+        switch (r.room_type) {
+          case "1BHK": colorUrl = "https://maps.google.com/mapfiles/ms/icons/blue-dot.png"; break;
+          case "2BHK": colorUrl = "https://maps.google.com/mapfiles/ms/icons/green-dot.png"; break;
+          case "3BHK": colorUrl = "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png"; break;
+          case "4BHK": colorUrl = "https://maps.google.com/mapfiles/ms/icons/pink-dot.png"; break;
+        }
+        return (
+          <Marker
+            key={r.id}
+            position={[parseFloat(r.latitude), parseFloat(r.longitude)]}
+            icon={new L.Icon({
+              iconUrl: colorUrl,
+              iconSize: [28, 28],
+              iconAnchor: [14, 28],
+              popupAnchor: [0, -28],
+            })}
+            eventHandlers={{ click: () => navigate(`/rooms/${r.id}`) }}
           >
-            <MapUpdater center={[parseFloat(room.latitude), parseFloat(room.longitude)]} />
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="&copy; OpenStreetMap contributors"
-            />
-
-            {/* Current room marker */}
-            <Marker
-              position={[parseFloat(room.latitude), parseFloat(room.longitude)]}
-              icon={new L.Icon({
-                iconUrl: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
-              })}
-            >
-              <Popup>
-                <strong>{room.title}</strong><br />{room.location}
-              </Popup>
-            </Marker>
-
-            {/* Nearby rooms markers (always visible) */}
-            {nearbyRooms.filter(r => r?.latitude && r?.longitude).map(r => (
-              <Marker
-                key={r.id}
-                position={[parseFloat(r.latitude), parseFloat(r.longitude)]}
-                icon={new L.Icon({
-                  iconUrl: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
-                  iconSize: [28, 28],
-                  iconAnchor: [14, 28],
-                  popupAnchor: [0, -28],
-                })}
-                eventHandlers={{ click: () => navigate(`/rooms/${r.id}`) }}
+            <Popup>
+              <strong>{r.title}</strong><br />{r.location}<br />
+              <button
+                className="text-blue-600 underline mt-1"
+                onClick={() => navigate(`/rooms/${r.id}`)}
               >
-                <Popup>
-                  <strong>{r.title}</strong><br />{r.location}<br />
-                  <button className="text-blue-600 underline mt-1" onClick={() => navigate(`/rooms/${r.id}`)}>View Details</button>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
+                View Details
+              </button>
+            </Popup>
+          </Marker>
+        );
+      })}
+    </MapContainer>
+
+    {/* Legend outside the map */}
+    <div className="absolute top-2 right-0 translate-x-full ml-2 bg-white/95 p-2 rounded-xl shadow-lg text-xs sm:text-sm max-w-[160px] z-50">
+      <h4 className="font-semibold mb-1 text-gray-700">Legend</h4>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-blue-500 inline-block"></span> 1BHK
         </div>
-      ) : (
-        <div className="h-64 flex items-center justify-center text-gray-500 font-medium mb-6">
-          📍 No location data available
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span> 2BHK
         </div>
-      )}
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span> 3BHK
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-pink-500 inline-block"></span> 4BHK
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span> Default
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-orange-500 inline-block"></span> Current Room
+        </div>
+      </div>
+    </div>
+  </div>
+) : (
+  <div className="h-64 flex items-center justify-center text-gray-500 font-medium mb-6">
+    📍 No location data available
+  </div>
+)}
+
+
 
       {/* Reviews */}
       <div className="mt-10">

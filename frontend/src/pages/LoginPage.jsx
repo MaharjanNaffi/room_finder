@@ -6,6 +6,8 @@ import { toast } from "react-toastify";
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState(1); // 1 = login, 2 = OTP
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
@@ -19,10 +21,36 @@ const LoginPage = () => {
     try {
       const response = await fetch("http://127.0.0.1:8000/api/userauth/login/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("📧 OTP sent to your email!");
+        setStep(2); // move to OTP step
+      } else {
+        toast.error(data.error || "❌ Invalid email or password.");
+        console.error("Login error:", data);
+      }
+    } catch (error) {
+      console.error("Login request error:", error);
+      toast.error("⚠️ Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpVerify = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/userauth/verify-otp/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
       });
 
       const data = await response.json();
@@ -35,11 +63,10 @@ const LoginPage = () => {
         toast.success("✅ Login successful!");
         navigate("/home");
       } else {
-        toast.error("❌ Invalid email or password. Please try again.");
-        console.error("Login error:", data);
+        toast.error(data.error || "❌ OTP verification failed.");
       }
     } catch (error) {
-      console.error("Login request error:", error);
+      console.error("OTP verification error:", error);
       toast.error("⚠️ Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -58,9 +85,7 @@ const LoginPage = () => {
     try {
       const response = await fetch("http://127.0.0.1:8000/api/userauth/forgot-password/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
@@ -93,50 +118,73 @@ const LoginPage = () => {
         </div>
 
         <div className="bg-white shadow-lg rounded-lg p-8">
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                className="mt-1 w-full border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+          <form onSubmit={step === 1 ? handleLogin : handleOtpVerify} className="space-y-6">
+            {step === 1 ? (
+              <>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                    Email Address
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    className="mt-1 w-full border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                className="mt-1 w-full border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    className="mt-1 w-full border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
 
-            <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(!showForgotPassword)}
-                  className="font-medium text-purple-600 hover:text-purple-500 transition duration-200"
-                >
-                  Forgot your password?
-                </button>
-              </div>
-            </div>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(!showForgotPassword)}
+                      className="font-medium text-purple-600 hover:text-purple-500 transition duration-200"
+                    >
+                      Forgot your password?
+                    </button>
+                  </div>
+                </div>
 
-            {showForgotPassword && (
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600">OTP has been sent to <strong>{email}</strong></p>
+                <div>
+                  <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
+                    Enter OTP
+                  </label>
+                  <input
+                    id="otp"
+                    type="text"
+                    placeholder="Enter the OTP"
+                    className="mt-1 w-full border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            {showForgotPassword && step === 1 && (
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
                 <p className="text-sm text-blue-800 mb-3">
                   Enter your email address and we'll send you a password reset link.
@@ -160,10 +208,10 @@ const LoginPage = () => {
               {loading ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Signing in...
+                  {step === 1 ? "Signing in..." : "Verifying..."}
                 </div>
               ) : (
-                'Sign In'
+                step === 1 ? "Sign In" : "Verify OTP"
               )}
             </button>
           </form>

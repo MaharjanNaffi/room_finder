@@ -61,18 +61,60 @@ class RegisterAPI(APIView):
 
 class LoginAPI(APIView):
     permission_classes = [AllowAny] 
-    
+
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
 
         user = authenticate(request, email=email, password=password)
-        if user is not None:
+        if user is None:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Generate OTP
+        from django.utils.crypto import get_random_string
+        otp = get_random_string(length=6, allowed_chars='0123456789')
+
+        # Save OTP (delete old if exists)
+        from .models import LoginOTP
+        LoginOTP.objects.filter(user=user).delete()
+        LoginOTP.objects.create(user=user, otp=otp)
+
+        # Send email
+        send_mail(
+            subject='Your Room Finder Login OTP',
+            message=f'Hi {user.first_name or user.name},\n\nYour OTP is: {otp}\nIt expires in 5 minutes.\n\nRoom Finder Team',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+
+        return Response({'message': 'OTP sent to your email. Please verify to log in.'})
+
+class VerifyOTPAPI(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+
+        if not email or not otp:
+            return Response({'error': 'Email and OTP are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+            from .models import LoginOTP
+            otp_record = LoginOTP.objects.filter(user=user, otp=otp).last()
+
+            if not otp_record or not otp_record.is_valid():
+                return Response({'error': 'Invalid or expired OTP'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # OTP is valid - delete it
+            otp_record.delete()
+
+            # Issue JWT tokens
             refresh = RefreshToken.for_user(user)
-            
-            # Also create/get token for compatibility
-            token, created = Token.objects.get_or_create(user=user)
-            
+            token, _ = Token.objects.get_or_create(user=user)
+
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -85,8 +127,9 @@ class LoginAPI(APIView):
                     'last_name': user.last_name,
                 }
             })
-        else:
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UserProfileAPI(APIView):
     permission_classes = [IsAuthenticated]

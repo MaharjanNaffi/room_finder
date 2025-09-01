@@ -102,20 +102,20 @@ function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 p-6">
+    <div className="min-h-screen w-full bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 p-6">
       <header className="text-center mb-10">
-        <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-purple-600 to-pink-600">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-purple-600 to-pink-600">
           Room Finder
         </h1>
-        <p className="text-lg mt-2 text-gray-600">Find clean, affordable rooms near you</p>
+        <p className="text-base sm:text-lg mt-2 text-gray-600">Find clean, affordable rooms near you</p>
       </header>
 
       {/* 🔍 Filter Section */}
-      <section className="max-w-5xl mx-auto bg-white shadow-lg rounded-2xl p-6 mb-10">
-        <div className="grid gap-4 sm:grid-cols-3">
+      <section className="max-w-6xl mx-auto bg-white shadow-lg rounded-2xl p-6 mb-10">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <input
             type="text"
-            placeholder="📍Search by keyword or location"
+            placeholder="📍Search by location"
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -190,8 +190,8 @@ function HomePage() {
       )}
 
       {/* 🗺️ Map Section */}
-      <section className="mt-16 max-w-6xl mx-auto">
-        <h2 className="text-2xl font-bold mb-4 text-gray-700">Map View</h2>
+      <section className="mt-16 w-full max-w-6xl mx-auto px-2 sm:px-4">
+        <h2 className="text-2xl sm:text-2xl font-bold mb-4 text-gray-700">Map View</h2>
         <div className="rounded-xl overflow-hidden">
           <MapView rooms={allRooms} />
         </div>

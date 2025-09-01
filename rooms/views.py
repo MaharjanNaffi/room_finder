@@ -12,6 +12,7 @@ from .models import Room, Review, Bookmark
 from .serializers import RoomSerializer, ReviewSerializer, BookmarkSerializer
 from .permissions import IsOwnerOrReadOnly
 from fuzzywuzzy import fuzz
+from Levenshtein import distance as levenshtein_distance
 from fuzzywuzzy import process
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
@@ -91,9 +92,12 @@ class RoomListCreateAPI(APIView):
             matched_ids = []
 
             for room in all_rooms:
-                combined_text = f"{room.title} {room.description} {room.location}"
-                score = fuzz.partial_ratio(query.lower(), combined_text.lower())
-                if score >= 60:  # You can adjust threshold
+                room_location = room.location.lower()
+                query_lower = query.lower()
+                # Compute Levenshtein distance
+                distance = levenshtein_distance(query_lower, room_location)
+                # Keep match if distance is 2 or 3
+                if distance <= 3:
                     matched_ids.append(room.id)
 
             rooms = rooms.filter(id__in=matched_ids)
