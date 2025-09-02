@@ -169,7 +169,7 @@ const RoomDetail = () => {
       <p className="text-gray-700 mb-1">{room.description}</p>
       <p className="text-purple-700 font-semibold mb-1">Price: Rs. {room.price}</p>
       <p className="text-gray-500 mb-2">Location: {room.location}</p>
-      <p className="text-gray-600 mb-4">Room Type: {room.room_type || "Not specified"}</p>
+      <p className="text-gray-600 mb-4">Room Type: {room.room_type || "Not specified"} (Bedroom,Hall,Kitchen)</p>
 
       {isAuthenticated ? (
         <div className="flex flex-wrap items-center gap-4 mb-6">
